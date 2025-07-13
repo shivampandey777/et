@@ -10,7 +10,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Fin Tracker - Money Tracker",
   description: "Track your finances with style!",
-    generator: 'v0.dev'
+  generator: 'shivam',
+  icons: {
+    icon: '/money.png',
+  }
 }
 
 export default function RootLayout({
