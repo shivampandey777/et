@@ -9,15 +9,19 @@ import { CalendarIcon, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { Textarea } from "./ui/textarea"
 import { useTransactions } from "@/contexts/transaction-context"
+import { toast } from "sonner";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export function ExpenseForm() {
     const { addTransaction, addCategory } = useTransactions()
     const [amount, setAmount] = useState("")
     const [category, setCategory] = useState("")
-    const [date, setDate] = useState<Date>(new Date())
+    const [date, setDate] = useState<Date | null>(new Date())
     const [notes, setNotes] = useState("")
     const [categories, setCategories] = useState<string[]>([])  // Store categories
     const [newCategory, setNewCategory] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Fetch categories from the backend
     useEffect(() => {
@@ -51,6 +55,7 @@ export function ExpenseForm() {
             date,
             notes,
         };
+        setIsSubmitting(true);
 
         try {
             const response = await fetch(`/api/expense/add`, {
@@ -67,6 +72,10 @@ export function ExpenseForm() {
                 addTransaction({
                     id: Date.now().toString(),
                     ...transactionData,
+                    date: transactionData.date ?? new Date(),
+                });
+                toast.success("Transaction added!", {
+                    description: "Your Expense was saved.",
                 });
 
                 setAmount("");
@@ -77,6 +86,8 @@ export function ExpenseForm() {
             }
         } catch (error) {
             console.error("Error adding transaction:", error); // Log the error
+        } finally {
+            setIsSubmitting(false)
         }
     };
 
@@ -97,6 +108,9 @@ export function ExpenseForm() {
 
                 if (response.ok) {
                     setCategories((prevCategories) => [...prevCategories, newCategory])
+                    toast.success("Category added!", {
+                        description: `Category "${newCategory}" created.`,
+                    });
                     setCategory(newCategory)
                     setNewCategory("")
                 } else {
@@ -169,10 +183,12 @@ export function ExpenseForm() {
             {/* Date */}
             <div className="space-y-1">
                 <Label className="text-xs">Date</Label>
-                <Button variant="outline" className="w-full justify-start text-left font-normal border-gray-200 focus:border-gray-400 h-8 text-sm">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {format(date, "dd/MM/yyyy")}
-                </Button>
+                <DatePicker
+                    selected={date}
+                    onChange={date => setDate(date)}
+                    dateFormat="dd/MM/yyyy"
+                    className="border-gray-200 focus:border-gray-400 h-8 text-sm w-full rounded-md px-3 py-1.5"
+                />
             </div>
 
             {/* Notes */}
@@ -188,11 +204,13 @@ export function ExpenseForm() {
                 />
             </div>
 
+            {/* Submit Button */}
             <Button
                 type="submit"
                 className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-1.5 text-sm rounded-md h-8"
+                disabled={isSubmitting} // Disable while submitting
             >
-                Save
+                {isSubmitting ? "Submitting..." : "Save"}
             </Button>
         </form>
     )

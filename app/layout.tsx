@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { TransactionProvider } from "@/contexts/transaction-context"
+import { Toaster, toast } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
           <div className="min-h-screen bg-gray-50 pb-20">
             <main className="container mx-auto px-4 py-8">{children}</main>
             <BottomNavigation />
+            <Toaster position="top-center" richColors />
           </div>
         </TransactionProvider>
       </body>

@@ -9,6 +9,9 @@ import { CalendarIcon, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { Textarea } from "./ui/textarea"
 import { useTransactions } from "@/contexts/transaction-context"
+import { toast } from "sonner";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export function IncomeForm() {
     const { addTransaction, addCategory } = useTransactions()
@@ -26,7 +29,7 @@ export function IncomeForm() {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await fetch("/api/category/fetch")
+                const response = await fetch("/api/income-category/fetch")
                 const data = await response.json()
                 if (response.ok) {
                     setCategories(data.map((category: { category_name: string }) => category.category_name))
@@ -73,6 +76,9 @@ export function IncomeForm() {
 
             if (response.ok) {
                 setSuccessMessage("Transaction added successfully!")
+                toast.success("Transaction added!", {
+                    description: "Your income was saved.",
+                });
                 addTransaction({
                     id: Date.now().toString(),
                     ...transactionData,
@@ -94,27 +100,31 @@ export function IncomeForm() {
     const handleAddCategory = async () => {
         if (newCategory && !categories.includes(newCategory)) {
             try {
-                const response = await fetch("/api/category/add", {
+                const response = await fetch("/api/income-category/add", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ category_name: newCategory }),
-                })
-                const data = await response.json()
+                    body: JSON.stringify({ category_name: newCategory }), // Send only category_name
+                });
+                const data = await response.json();
 
                 if (response.ok) {
-                    setCategories((prevCategories) => [...prevCategories, newCategory])
-                    setCategory(newCategory)
-                    setNewCategory("")
+                    setCategories((prevCategories) => [...prevCategories, newCategory]);
+                    toast.success("Category added!", {
+                        description: `Category "${newCategory}" created.`,
+                    });
+                    setCategory(newCategory);
+                    setNewCategory("");
                 } else {
-                    console.error("Error adding category:", data.error)
+                    console.error("Error adding category:", data.error);
                 }
             } catch (error) {
-                console.error("Error adding category:", error)
+                console.error("Error adding category:", error);
             }
         }
-    }
+    };
+
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -177,11 +187,19 @@ export function IncomeForm() {
             {/* Date */}
             <div className="space-y-1">
                 <Label className="text-xs">Date</Label>
-                <Button variant="outline" className="w-full justify-start text-left font-normal border-gray-200 focus:border-gray-400 h-8 text-sm">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {format(date, "dd/MM/yyyy")}
-                </Button>
+                <DatePicker
+                    selected={date}
+                    onChange={(date) => {
+                        if (date) setDate(date);
+                    }}
+                    className="border-gray-200 focus:border-gray-400 h-8 text-sm w-full rounded-md px-3 py-1.5"
+                    dateFormat="dd/MM/yyyy"
+                    maxDate={new Date()} // optional: limit to today or earlier
+                    showYearDropdown
+                    scrollableYearDropdown
+                />
             </div>
+
 
             {/* Notes */}
             <div className="space-y-1">
