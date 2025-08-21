@@ -24,7 +24,7 @@ const fetchMonthlySpending = async () => {
   return monthlySpending
 }
 
-export function BalanceCard() {
+export function BalanceCard(balance: { balance: number }) {
   const [monthlySpending, setMonthlySpending] = useState<number>(0)
 
   // Fetch monthly spending on component mount
