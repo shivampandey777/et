@@ -10,13 +10,20 @@ import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+// ...existing imports...
+interface Category {
+    id?: number;
+    category_name: string;
+}
+
 export function ExpenseForm() {
     const { addTransaction, addCategory } = useTransactions();
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("");
     const [date, setDate] = useState<Date | null>(new Date());
     const [notes, setNotes] = useState("");
-    const [categories, setCategories] = useState<string[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [newCategory, setNewCategory] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Track dropdown state
@@ -31,7 +38,7 @@ export function ExpenseForm() {
 
             if (response.ok) {
                 console.log(data);  // Log the fetched data
-                setCategories(data.map((category: { category_name: string }) => category.category_name));
+                setCategories(data.map((category: Category) => category));
             } else {
                 console.error("Error fetching categories:", data.error);
                 toast.error(data.error || "Failed to fetch categories.");
@@ -100,9 +107,35 @@ export function ExpenseForm() {
         }
     };
 
+    const handleDeleteCategory = async (categoryId: number) => {
+        try {
+            const response = await fetch("/api/category/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: Number(categoryId) }),
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                setCategories((prev) => prev.filter((cat) => cat.id !== categoryId));
+                // Show success message when category is deleted successfully
+                toast.success("Category deleted successfully!", {
+                    description: `The category with ID ${categoryId} has been deleted.`,
+                });
+            } else {
+                // Show error message if deletion fails
+                toast.error(data.error || "Failed to delete category.");
+            }
+        } catch (error) {
+            // Show error message in case of any exception
+            toast.error("An error occurred while deleting category.");
+        }
+    };
+
+
     // Handle adding a new category to the database
     const handleAddCategory = async () => {
-        if (newCategory && !categories.includes(newCategory)) {
+        if (newCategory && !categories.some((cat) => cat.category_name === newCategory)) {
             try {
                 const response = await fetch("/api/category/add", {
                     method: "POST",
@@ -115,7 +148,10 @@ export function ExpenseForm() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    setCategories((prevCategories) => [...prevCategories, newCategory]);
+                    setCategories((prevCategories) => [
+                        ...prevCategories,
+                        { id: Date.now(), category_name: newCategory }
+                    ]);
                     toast.success("Category added!", {
                         description: `Category "${newCategory}" created.`,
                     });
@@ -152,57 +188,120 @@ export function ExpenseForm() {
             </div>
 
             {/* Category */}
-            <div className="space-y-1">
-                <Label className="text-xs">Category</Label>
-                <Select value={category} onValueChange={setCategory} onOpenChange={handleDropdownOpen}> {/* Add onOpenChange handler */}
-                    <SelectTrigger className="border-gray-200 focus:border-gray-400 h-8 text-sm">
-                        <SelectValue placeholder="Select" />
-                    </SelectTrigger>
+            <div className="relative">
+                <button
+                    type="button"
+                    className="w-full h-8 text-sm rounded-md px-3 py-1.5 flex justify-between items-center border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    onClick={() => {
+                        setIsDropdownOpen((open) => {
+                            const next = !open;
+                            if (next) fetchCategories();
+                            return next;
+                        });
+                    }}
+                >
+                    {category || "Select"}
+                    <span className="ml-2">&#9662;</span>
+                </button>
 
-                    {/* SelectContent wraps all options */}
-                    <SelectContent className="max-h-60 overflow-y-auto">
-                        {loading ? (
-                            <SelectItem value="loading" disabled className="text-gray-500 text-sm">
-                                Loading...
-                            </SelectItem>
+                {isDropdownOpen && (
+                    <div
+                        className="
+        absolute z-10 bg-white border rounded-md shadow-md w-full mt-1
+        overflow-y-auto
+        max-h-[150px]   /* ~ Add row (sticky) + 1 item visible */
+      "
+                    >
+                        {/* Add new category (sticky header) */}
+                        {isAddingCategory ? (
+                            <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-white border-b">
+                                <Input
+                                    value={newCategory}
+                                    onChange={(e) => setNewCategory(e.target.value)}
+                                    placeholder="New category name"
+                                    className="text-sm flex-1 h-8"
+                                />
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="h-8 bg-green-600 text-white px-2"
+                                    onClick={async () => {
+                                        await handleAddCategory();
+                                        setIsAddingCategory(false);
+                                        setNewCategory("");
+                                    }}
+                                    disabled={!newCategory.trim()}
+                                >
+                                    Add
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 text-gray-600"
+                                    onClick={() => {
+                                        setIsAddingCategory(false);
+                                        setNewCategory("");
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
                         ) : (
-                            categories.map((cat) => (
-                                <SelectItem key={cat} value={cat} className="text-sm">
-                                    {cat}
-                                </SelectItem>
-                            ))
+                            <button
+                                type="button"
+                                className="sticky top-0 z-10 w-full flex items-center px-3 py-2 bg-white border-b hover:bg-gray-50 text-left"
+                                onClick={() => setIsAddingCategory(true)}
+                            >
+                                <Plus className="h-3 w-3 mr-2" />
+                                Add category
+                            </button>
                         )}
 
-                        {/* Add new category option */}
-                        <SelectItem value="add-new" className="text-gray-600 text-sm">
-                            <div className="flex items-center">
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add category
-                            </div>
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                        {/* Loading state */}
+                        {loading && (
+                            <div className="px-3 py-2 text-sm text-gray-500">Loading…</div>
+                        )}
 
-                {category === "add-new" && (
-                    <div className="mt-2">
-                        <Input
-                            type="text"
-                            placeholder="New category"
-                            value={newCategory}
-                            onChange={(e) => setNewCategory(e.target.value)}
-                            className="border-gray-200 focus:border-gray-400 h-8 text-sm"
-                        />
-                        <Button
-                            type="button"
-                            className="mt-2 w-full bg-gray-800 text-white font-medium py-1.5 text-sm rounded-md"
-                            onClick={handleAddCategory}
-                        >
-                            Add Category
-                        </Button>
+                        {/* Category items */}
+                        {!loading && categories.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-gray-500">No categories</div>
+                        )}
+
+                        {!loading &&
+                            categories.map((cat) => (
+                                <div
+                                    key={cat.id ?? cat.category_name}
+                                    className="flex items-center justify-between px-3 py-2 hover:bg-gray-100"
+                                >
+                                    <span
+                                        className="flex-1 text-left cursor-pointer truncate"
+                                        onClick={() => {
+                                            setCategory(cat.category_name);
+                                            setIsDropdownOpen(false);
+                                        }}
+                                        title={cat.category_name}
+                                    >
+                                        {cat.category_name}
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 px-2 text-xs text-red-600 hover:text-white border border-red-500 hover:bg-red-500 rounded"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteCategory(cat.id!);
+                                        }}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
+                            ))}
                     </div>
                 )}
-
             </div>
+
 
             {/* Date */}
             <div className="space-y-1">

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
+import { CategoryExpenseList } from "./CategoryExpenseList"
 
 type Expense = {
   category: string
@@ -11,12 +12,13 @@ type Expense = {
 
 export function SpendingSummary() {
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   // Fetch expenses data from the API
   const fetchExpenses = async () => {
-    const response = await fetch('/api/expense/fetch') // Fetch from the correct API endpoint
-    const data = await response.json()
-    setExpenses(data)
+    const response = await fetch('/api/expense/fetch?timeFrame=day');
+    const data = await response.json();
+    setExpenses(data);
   }
 
   useEffect(() => {
@@ -70,7 +72,8 @@ export function SpendingSummary() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: index * 0.1 }}
-          className="clean-card p-4 rounded-lg"
+          className="clean-card p-4 rounded-lg cursor-pointer"
+          onClick={() => setSelectedCategory(category)}
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-gray-700">{category}</h3>
@@ -93,6 +96,12 @@ export function SpendingSummary() {
           </div>
         </motion.div>
       ))}
+      {selectedCategory && (
+        <CategoryExpenseList
+          category={selectedCategory}
+          onClose={() => setSelectedCategory(null)}
+        />
+      )}
     </div>
   )
 }
